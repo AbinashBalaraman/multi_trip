@@ -18,7 +18,7 @@ A premium, modern expense management and trip planning application built for gro
 
 ## 🚀 Live Demo
 
-**Production:** [https://campacampa.netlify.app](https://campacampa.netlify.app)
+*[Link removed for privacy]*
 
 ## 🛠️ Tech Stack
 
