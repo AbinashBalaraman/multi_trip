@@ -214,7 +214,7 @@ export const useTripStore = create<TripStore>()(
 
             initSync: async () => {
                 set({ isLoading: true });
-                
+
                 // Step 1: Fetch all trips
                 await get().fetchTrips();
                 const allTrips = get().trips;
@@ -233,16 +233,16 @@ export const useTripStore = create<TripStore>()(
                 } else {
                     // No trips exist - Create Default
                     await get().createTrip('Mysore and Bangalore Mini Trip', '2026-01-24', '2026-01-27');
-                    
+
                     // After creating, fetch again to get the ID and data
                     await get().fetchTrips();
                     if (get().trips.length > 0) {
                         tripToLoad = get().trips[0];
-                        
+
                         // Seed default data for this new trip (Only for the very first default trip)
                         // This logic is a bit implicit, but preserves original behavior for fresh install
                         const tripId = tripToLoad.id;
-                        
+
                         // Seed Members
                         const defaultMembers: Member[] = [
                             { id: genId(), name: 'Sandy', planned: 3000, given: 2000, trip_id: tripId },
@@ -254,7 +254,7 @@ export const useTripStore = create<TripStore>()(
                             { id: genId(), name: 'Karthi', planned: 3000, given: 2000, trip_id: tripId },
                         ];
                         await Promise.all(defaultMembers.map(mem => supabase.from('members').insert(memberToDb(mem))));
-                        
+
                         // Seed Categories
                         const defaultCategories: ExpenseCategory[] = [
                             { id: genId(), name: 'Transportation (Internal)', planned: 0, actual: 0, color: '#3B82F6', icon: 'car', trip_id: tripId },
@@ -288,61 +288,61 @@ export const useTripStore = create<TripStore>()(
                 // We'll stick to store-level subscription being global for now but checking trip_id in handler
                 const setupSubscription = () => {
                     supabase
-                    .channel('public:data')
-                    .on('postgres_changes', { event: '*', schema: 'public', table: 'members' }, payload => {
-                        const currentTripId = get().tripId;
-                        if (!currentTripId) return;
-                        
-                        // Only process if it belongs to current trip
-                        const record = (payload.new || payload.old) as any;
-                        if (record.trip_id !== currentTripId) return;
+                        .channel('public:data')
+                        .on('postgres_changes', { event: '*', schema: 'public', table: 'members' }, payload => {
+                            const currentTripId = get().tripId;
+                            if (!currentTripId) return;
 
-                        if (payload.eventType === 'INSERT') {
-                            set(s => {
-                                const exists = s.members.some(m => m.id === payload.new.id);
-                                return exists ? s : { members: [...s.members, dbToMember(payload.new)] };
-                            });
-                        }
-                        if (payload.eventType === 'UPDATE') set(s => ({ members: s.members.map(m => m.id === payload.new.id ? dbToMember(payload.new) : m) }));
-                        if (payload.eventType === 'DELETE') set(s => ({ members: s.members.filter(m => m.id !== payload.old.id) }));
-                    })
-                    .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, payload => {
-                        const currentTripId = get().tripId;
-                        if (!currentTripId) return;
-                        const record = (payload.new || payload.old) as any;
-                        if (record.trip_id !== currentTripId) return;
+                            // Only process if it belongs to current trip
+                            const record = (payload.new || payload.old) as any;
+                            if (record.trip_id !== currentTripId) return;
 
-                        if (payload.eventType === 'INSERT') {
-                            set(s => {
-                                const exists = s.categories.some(c => c.id === payload.new.id);
-                                return exists ? s : { categories: [...s.categories, dbToCategory(payload.new)] };
-                            });
-                        }
-                        if (payload.eventType === 'UPDATE') set(s => ({ categories: s.categories.map(c => c.id === payload.new.id ? dbToCategory(payload.new) : c) }));
-                        if (payload.eventType === 'DELETE') set(s => ({ categories: s.categories.filter(c => c.id !== payload.old.id) }));
-                    })
-                    .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, payload => {
-                         const currentTripId = get().tripId;
-                        if (!currentTripId) return;
-                        const record = (payload.new || payload.old) as any;
-                        if (record.trip_id !== currentTripId) return;
+                            if (payload.eventType === 'INSERT') {
+                                set(s => {
+                                    const exists = s.members.some(m => m.id === payload.new.id);
+                                    return exists ? s : { members: [...s.members, dbToMember(payload.new)] };
+                                });
+                            }
+                            if (payload.eventType === 'UPDATE') set(s => ({ members: s.members.map(m => m.id === payload.new.id ? dbToMember(payload.new) : m) }));
+                            if (payload.eventType === 'DELETE') set(s => ({ members: s.members.filter(m => m.id !== payload.old.id) }));
+                        })
+                        .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, payload => {
+                            const currentTripId = get().tripId;
+                            if (!currentTripId) return;
+                            const record = (payload.new || payload.old) as any;
+                            if (record.trip_id !== currentTripId) return;
 
-                        if (payload.eventType === 'INSERT') {
-                            set(s => {
-                                const exists = s.expenses.some(e => e.id === payload.new.id);
-                                return exists ? s : { expenses: [dbToExpense(payload.new), ...s.expenses] };
-                            });
-                        }
-                        if (payload.eventType === 'UPDATE') set(s => ({ expenses: s.expenses.map(e => e.id === payload.new.id ? dbToExpense(payload.new) : e) }));
-                        if (payload.eventType === 'DELETE') set(s => ({ expenses: s.expenses.filter(e => e.id !== payload.old.id) }));
-                    })
-                    .on('postgres_changes', { event: '*', schema: 'public', table: 'trips' }, async () => {
-                         // Reload trips if any trip changes
-                         await get().fetchTrips();
-                    })
-                    .subscribe();
+                            if (payload.eventType === 'INSERT') {
+                                set(s => {
+                                    const exists = s.categories.some(c => c.id === payload.new.id);
+                                    return exists ? s : { categories: [...s.categories, dbToCategory(payload.new)] };
+                                });
+                            }
+                            if (payload.eventType === 'UPDATE') set(s => ({ categories: s.categories.map(c => c.id === payload.new.id ? dbToCategory(payload.new) : c) }));
+                            if (payload.eventType === 'DELETE') set(s => ({ categories: s.categories.filter(c => c.id !== payload.old.id) }));
+                        })
+                        .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, payload => {
+                            const currentTripId = get().tripId;
+                            if (!currentTripId) return;
+                            const record = (payload.new || payload.old) as any;
+                            if (record.trip_id !== currentTripId) return;
+
+                            if (payload.eventType === 'INSERT') {
+                                set(s => {
+                                    const exists = s.expenses.some(e => e.id === payload.new.id);
+                                    return exists ? s : { expenses: [dbToExpense(payload.new), ...s.expenses] };
+                                });
+                            }
+                            if (payload.eventType === 'UPDATE') set(s => ({ expenses: s.expenses.map(e => e.id === payload.new.id ? dbToExpense(payload.new) : e) }));
+                            if (payload.eventType === 'DELETE') set(s => ({ expenses: s.expenses.filter(e => e.id !== payload.old.id) }));
+                        })
+                        .on('postgres_changes', { event: '*', schema: 'public', table: 'trips' }, async () => {
+                            // Reload trips if any trip changes
+                            await get().fetchTrips();
+                        })
+                        .subscribe();
                 };
-                
+
                 setupSubscription();
                 console.log('[Sync] Real-time subscription active');
             },
@@ -363,12 +363,12 @@ export const useTripStore = create<TripStore>()(
                     return;
                 }
 
-                set({ 
-                    tripId: tripId, 
-                    tripName: trip.name, 
-                    tripStartDate: trip.startDate, 
+                set({
+                    tripId: tripId,
+                    tripName: trip.name,
+                    tripStartDate: trip.startDate,
                     tripEndDate: trip.endDate,
-                    isLoading: true 
+                    isLoading: true
                 });
 
                 // Fetch data for this trip
@@ -381,7 +381,7 @@ export const useTripStore = create<TripStore>()(
                 if (membersRes.data) set({ members: membersRes.data.map(dbToMember) });
                 if (categoriesRes.data) set({ categories: categoriesRes.data.map(dbToCategory) });
                 if (expensesRes.data) set({ expenses: expensesRes.data.map(dbToExpense) });
-                
+
                 set({ isLoading: false, isSynced: true });
             },
 
@@ -391,15 +391,15 @@ export const useTripStore = create<TripStore>()(
                     .insert({ name, start_date: startDate, end_date: endDate })
                     .select()
                     .single();
-                
+
                 if (error) {
                     console.error('[DB] createTrip failed:', error);
                     throw error;
                 }
-                
+
                 const newTrip = dbToTrip(data);
                 set(s => ({ trips: [newTrip, ...s.trips] }));
-                
+
                 // Add default categories for new trip to be helpful
                 const tripId = newTrip.id;
                 const defaultCategories: ExpenseCategory[] = [
@@ -408,9 +408,9 @@ export const useTripStore = create<TripStore>()(
                     { id: genId(), name: 'Accommodation', planned: 0, actual: 0, color: '#F59E0B', icon: 'trophy', trip_id: tripId }, // trophy icon as 'hotel' mapped in component
                     { id: genId(), name: 'Activities', planned: 0, actual: 0, color: '#10B981', icon: 'ticket', trip_id: tripId },
                 ];
-                
+
                 await Promise.all(defaultCategories.map(cat => supabase.from('categories').insert(categoryToDb(cat))));
-                
+
                 // Switch to new trip
                 await get().setCurrentTrip(newTrip.id);
             },
@@ -421,23 +421,23 @@ export const useTripStore = create<TripStore>()(
                     console.error('[DB] deleteTrip failed:', error);
                     return;
                 }
-                
+
                 set(s => ({ trips: s.trips.filter(t => t.id !== tripId) }));
-                
+
                 // If deleted current trip, switch to another one
                 if (get().tripId === tripId) {
                     const remainingTrips = get().trips;
                     if (remainingTrips.length > 0) {
                         await get().setCurrentTrip(remainingTrips[0].id);
                     } else {
-                         // Reset state if no trips left
-                         set({ 
-                             tripId: null, 
-                             tripName: '', 
-                             members: [], 
-                             categories: [], 
-                             expenses: [] 
-                         });
+                        // Reset state if no trips left
+                        set({
+                            tripId: null,
+                            tripName: '',
+                            members: [],
+                            categories: [],
+                            expenses: []
+                        });
                     }
                 }
             },
@@ -577,22 +577,13 @@ export const useTripStore = create<TripStore>()(
                 }
             },
             // Stub implementations for timeline (no table info provided/verified)
-            addEvent: async (e) => set(s => ({ timeline: [...s.timeline, { ...e, id: genId() }] })),
-            updateEvent: async (id, d) => set(s => ({ timeline: s.timeline.map(tn => tn.id === id ? { ...tn, ...d } : tn) })),
-            deleteEvent: async (id) => set(s => ({ timeline: s.timeline.filter(t => t.id !== id) })),
+            addEvent: async (e) => { set(s => ({ timeline: [...s.timeline, { ...e, id: genId() }] })); },
+            updateEvent: async (id, d) => { set(s => ({ timeline: s.timeline.map(tn => tn.id === id ? { ...tn, ...d } : tn) })); },
+            deleteEvent: async (id) => { set(s => ({ timeline: s.timeline.filter(t => t.id !== id) })); },
 
             setTripDates: async (start, end) => {
                 set({ tripStartDate: start, tripEndDate: end });
                 if (get().tripId) await supabase.from('trips').update({ start_date: start, end_date: end }).eq('id', get().tripId);
-            },
-
-            getTotalPlanned: () => get().categories.reduce((sum, c) => sum + c.planned, 0),
-            getTotalMemberPlanned: () => get().members.reduce((sum, m) => sum + m.planned, 0),
-            getTotalActual: () => get().categories.reduce((sum, c) => sum + c.actual, 0),
-            getTotalGiven: () => get().members.reduce((sum, m) => sum + m.given, 0),
-            getMemberBalance: (memberId) => {
-                const member = get().members.find(m => m.id === memberId);
-                return member ? member.given - member.planned : 0;
             },
 
             setHasHydrated: (state) => set({ _hasHydrated: state }),
