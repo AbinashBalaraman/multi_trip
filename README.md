@@ -1,79 +1,79 @@
-# TripMaster 🚀
+# Multi Trip 🚀 (The Boys Edition)
 
-A modern trip expense management and tracking application built with Next.js, Supabase, and Netlify.
+A premium, modern expense management and trip planning application built for groups. Manage multiple adventures, track expenses, settle debts, and visualize your trip stats with a stunning, glassmorphic UI.
 
-## ✨ Features
+![Trip Dashboard](https://campacampa.netlify.app/og-image.jpg)
 
-- 💰 **Expense Tracking** - Track all trip expenses by category
-- 👥 **Member Management** - Manage trip participants and contributions
-- 📊 **Visual Analytics** - Beautiful charts and insights
-- 🔄 **Real-time Sync** - Changes sync across all devices instantly
-- 📱 **Mobile Responsive** - Works perfectly on all devices
-- 🌙 **Dark Mode** - Eye-friendly dark theme
+## ✨ key Features
+
+- **🌍 Multi-Trip Support** - Create and switch between multiple trips seamlessly.
+- **💰 Expense Tracking** - Log expenses, categorize them, and see who paid.
+- **📊 Visual Analytics** - Beautiful interactive charts for spending breakdowns.
+- **👥 Member Management** - Track individual contributions and balances.
+- **🔄 Real-time Sync** - Powered by Supabase for instant updates across devices.
+- **⚖️ Debt Settlement** - Smart algorithms to calculate who owes who.
+- **📅 Timeline Builder** - Plan your itinerary with a visual timeline.
+- **🎨 Premium UI** - Glassmorphism design, smooth animations, and a "The Boys" themed interface.
+- **📱 Responsive** - Works perfectly on mobile and desktop.
 
 ## 🚀 Live Demo
 
-**Production:** https://campacampa.netlify.app
+**Production:** [https://campacampa.netlify.app](https://campacampa.netlify.app)
 
 ## 🛠️ Tech Stack
 
-- **Framework:** Next.js 16 with App Router
-- **Database:** Supabase (PostgreSQL)
-- **Styling:** Tailwind CSS
+- **Framework:** Next.js 16 (App Router)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS + Radix UI
+- **Backend:** Supabase (PostgreSQL + Realtime)
+- **State Management:** Zustand (with Persistence)
 - **Charts:** Recharts
-- **Deployment:** Netlify
-- **State Management:** Zustand
+- **Icons:** Lucide React
+- **Hosting:** Netlify
 
 ## 📦 Quick Start
 
-```bash
-# Install dependencies
-npm install
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/AbinashBalaraman/multi_trip.git
+   cd multi_trip
+   ```
 
-# Set up environment variables
-cp .env.example .env.local
-# Add your Supabase credentials
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-# Run development server
-npm run dev
+3. **Environment Setup**
+   Create a `.env.local` file in the root directory:
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
 
-# Build for production
-npm run build
-```
+4. **Run Development Server**
+   ```bash
+   npm run dev
+   ```
+   Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
 
-## 🗄️ Database Setup
+## 🗄️ Database Schema
 
-Run the SQL scripts in order:
+The app uses a relational schema designed for multi-tenancy (per trip):
 
-1. `supabase/schema.sql` - Create tables
-2. `supabase/seed.sql` - Insert default data
-
-See `supabase/README.md` for details.
-
-## 🔧 Environment Variables
-
-Required in `.env.local`:
-
-```
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
-## 📝 Documentation
-
-- [`DEPLOYMENT.md`](DEPLOYMENT.md) - Deployment guide
-- [`supabase/README.md`](supabase/README.md) - Database documentation
-- [`GIT_GUIDE.md`](GIT_GUIDE.md) - Git workflow
-- [`NETLIFY_SETUP.md`](NETLIFY_SETUP.md) - CI/CD setup
+- **`trips`**: Stores trip metadata (name, dates).
+- **`members`**: Participants linked to a specific `trip_id`.
+- **`categories`**: Budget categories linked to a `trip_id`.
+- **`expenses`**: Transactions linked to `category_id` and `trip_id`.
 
 ## 🤝 Contributing
 
-This is a personal project, but feel free to fork and customize!
+This is a personal project used for managing our group trips. Feel free to fork it for your own adventures!
 
 ## 📄 License
 
-MIT
+MIT License - build something cool!
 
 ---
 
-**Built with ❤️ for hassle-free trip management**
+**Built with ❤️ by [Abinash Balaraman](https://github.com/AbinashBalaraman)**
