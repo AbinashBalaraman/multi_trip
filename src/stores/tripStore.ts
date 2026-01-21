@@ -61,7 +61,22 @@ const dbToExpense = (row: any): Expense => ({
     trip_id: row.trip_id
 });
 
+// Trip Mapper
+const dbToTrip = (row: any): Trip => ({
+    id: row.id,
+    name: row.name,
+    startDate: row.start_date,
+    endDate: row.end_date,
+});
+
 // Types
+export interface Trip {
+    id: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+}
+
 export interface Member {
     id: string;
     name: string;
@@ -105,6 +120,7 @@ export interface TripStore {
     tripId: string | null;
     isSynced: boolean;
     _hasHydrated: boolean; // Tracking hydration state
+    isLoading: boolean;
 
     // Trip Info
     tripName: string;
@@ -114,6 +130,7 @@ export interface TripStore {
     tripEndDate: string;
 
     // Data
+    trips: Trip[];
     members: Member[];
     categories: ExpenseCategory[];
     expenses: Expense[];
@@ -122,6 +139,12 @@ export interface TripStore {
     // Sync Action
     initSync: () => Promise<void>;
     setHasHydrated: (state: boolean) => void;
+
+    // Trip Actions
+    fetchTrips: () => Promise<void>;
+    setCurrentTrip: (tripId: string) => Promise<void>;
+    createTrip: (name: string, startDate: string, endDate: string) => Promise<void>;
+    deleteTrip: (tripId: string) => Promise<void>;
 
     // Actions
     addMember: (name: string) => Promise<void>;
@@ -163,16 +186,16 @@ export const useTripStore = create<TripStore>()(
             tripId: null,
             isSynced: false,
             _hasHydrated: false,
-            tripName: 'Mysore and Bangalore Mini Trip',
+            isLoading: false,
+            tripName: '',
             startingBalance: 0,
             currency: 'INR',
-            tripStartDate: '2026-01-24',
-            tripEndDate: '2026-01-27',
+            tripStartDate: '',
+            tripEndDate: '',
+            trips: [], // List of all trips
             members: [],
             categories: [],
             expenses: [],
-            categories: [], // Note: duplicate key in original, kept to match structure (though redundant)
-            expenses: [],   // Note: duplicate key in original
             timeline: [],
 
             // UI State Defaults
@@ -190,142 +213,91 @@ export const useTripStore = create<TripStore>()(
             getMemberBalance: (mId) => (get().members.find(m => m.id === mId)?.given || 0) - (get().expenses.filter(e => e.paidBy === mId).reduce((acc, e) => acc + e.amount, 0)),
 
             initSync: async () => {
-                const TRIP_NAME = 'Mysore and Bangalore Mini Trip';
+                set({ isLoading: true });
+                
+                // Step 1: Fetch all trips
+                await get().fetchTrips();
+                const allTrips = get().trips;
+                const currentId = get().tripId;
 
-                // Step 1: Find or create the SINGLE trip by name (database-first approach)
-                const { data: existingTrips } = await supabase
-                    .from('trips')
-                    .select('*')
-                    .eq('name', TRIP_NAME)
-                    .limit(1);
+                let tripToLoad = null;
 
-                let currentTripId: string | null = null;
-
-                if (existingTrips && existingTrips.length > 0) {
-                    // Trip exists - use it
-                    currentTripId = existingTrips[0].id;
-                    console.log('[Sync] Found existing trip:', currentTripId);
+                if (allTrips.length > 0) {
+                    // If we have a stored tripId and it exists, use it
+                    if (currentId && allTrips.find(t => t.id === currentId)) {
+                        tripToLoad = allTrips.find(t => t.id === currentId);
+                    } else {
+                        // Otherwise use the first one
+                        tripToLoad = allTrips[0];
+                    }
                 } else {
-                    // Trip doesn't exist - create it
-                    try {
-                        const { data: newTrip, error } = await supabase
-                            .from('trips')
-                            .insert({
-                                name: TRIP_NAME,
-                                start_date: '2026-01-24',
-                                end_date: '2026-01-27'
-                            })
-                            .select()
-                            .single();
-
-                        if (error) throw error;
-                        if (newTrip) currentTripId = newTrip.id;
-                        console.log('[Sync] Created new trip:', currentTripId);
-                    } catch (e) {
-                        console.error('[Sync] Failed to create trip:', e);
+                    // No trips exist - Create Default
+                    await get().createTrip('Mysore and Bangalore Mini Trip', '2026-01-24', '2026-01-27');
+                    
+                    // After creating, fetch again to get the ID and data
+                    await get().fetchTrips();
+                    if (get().trips.length > 0) {
+                        tripToLoad = get().trips[0];
+                        
+                        // Seed default data for this new trip (Only for the very first default trip)
+                        // This logic is a bit implicit, but preserves original behavior for fresh install
+                        const tripId = tripToLoad.id;
+                        
+                        // Seed Members
+                        const defaultMembers: Member[] = [
+                            { id: genId(), name: 'Sandy', planned: 3000, given: 2000, trip_id: tripId },
+                            { id: genId(), name: 'Vicky', planned: 3000, given: 2000, trip_id: tripId },
+                            { id: genId(), name: 'Abi', planned: 3000, given: 2000, trip_id: tripId },
+                            { id: genId(), name: 'Lachu', planned: 3000, given: 2000, trip_id: tripId },
+                            { id: genId(), name: 'Yuva', planned: 3000, given: 2000, trip_id: tripId },
+                            { id: genId(), name: 'Kalai', planned: 3000, given: 2000, trip_id: tripId },
+                            { id: genId(), name: 'Karthi', planned: 3000, given: 2000, trip_id: tripId },
+                        ];
+                        await Promise.all(defaultMembers.map(mem => supabase.from('members').insert(memberToDb(mem))));
+                        
+                        // Seed Categories
+                        const defaultCategories: ExpenseCategory[] = [
+                            { id: genId(), name: 'Transportation (Internal)', planned: 0, actual: 0, color: '#3B82F6', icon: 'car', trip_id: tripId },
+                            { id: genId(), name: 'Travel - Train/Bus', planned: 1980, actual: 0, color: '#8B5CF6', icon: 'plane', trip_id: tripId },
+                            { id: genId(), name: 'Activities Fun World', planned: 4497, actual: 4497, color: '#10B981', icon: 'ticket', trip_id: tripId },
+                            { id: genId(), name: 'Turf', planned: 1000, actual: 0, color: '#F59E0B', icon: 'trophy', trip_id: tripId },
+                            { id: genId(), name: 'Food Friday Night', planned: 400, actual: 0, color: '#EF4444', icon: 'utensils', trip_id: tripId },
+                            { id: genId(), name: 'Food Saturday', planned: 2100, actual: 0, color: '#EF4444', icon: 'utensils', trip_id: tripId },
+                            { id: genId(), name: 'Food Sunday', planned: 2100, actual: 0, color: '#EF4444', icon: 'utensils', trip_id: tripId },
+                            { id: genId(), name: 'Food Monday', planned: 2100, actual: 0, color: '#EF4444', icon: 'utensils', trip_id: tripId },
+                            { id: genId(), name: 'Tickets/Entry', planned: 0, actual: 0, color: '#06B6D4', icon: 'ticket', trip_id: tripId },
+                            { id: genId(), name: 'Drinks/Beverages', planned: 0, actual: 0, color: '#EC4899', icon: 'coffee', trip_id: tripId },
+                            { id: genId(), name: 'Emergency/Medical', planned: 500, actual: 0, color: '#DC2626', icon: 'alert', trip_id: tripId },
+                            { id: genId(), name: 'Entertainment', planned: 0, actual: 0, color: '#A855F7', icon: 'music', trip_id: tripId },
+                            { id: genId(), name: 'Tips/Service', planned: 0, actual: 0, color: '#84CC16', icon: 'heart', trip_id: tripId },
+                            { id: genId(), name: 'Souvenirs/Gifts', planned: 0, actual: 0, color: '#F97316', icon: 'gift', trip_id: tripId },
+                        ];
+                        await Promise.all(defaultCategories.map(cat => supabase.from('categories').insert(categoryToDb(cat))));
                     }
                 }
 
-                // Step 2: Handle offline mode
-                if (!currentTripId) {
-                    console.warn('[Sync] No Trip ID - running in offline mode');
-                    set({ tripId: null, isSynced: false });
-                    return;
-                }
-
-                // Step 3: Set trip ID and mark as synced
-                set({ tripId: currentTripId, isSynced: true });
-
-                // Step 4: Fetch all data from database (DATABASE IS SOURCE OF TRUTH)
-                const { data: dbMembers } = await supabase
-                    .from('members')
-                    .select('*')
-                    .eq('trip_id', currentTripId);
-
-                const { data: dbCategories } = await supabase
-                    .from('categories')
-                    .select('*')
-                    .eq('trip_id', currentTripId);
-
-                const { data: dbExpenses } = await supabase
-                    .from('expenses')
-                    .select('*')
-                    .eq('trip_id', currentTripId);
-
-                // Step 5: Sync Members (DB-first, only seed if DB is completely empty)
-                if (dbMembers && dbMembers.length > 0) {
-                    // Database has data - use it
-                    set({ members: dbMembers.map(dbToMember) });
-                    console.log('[Sync] Loaded', dbMembers.length, 'members from DB');
+                if (tripToLoad) {
+                    await get().setCurrentTrip(tripToLoad.id);
                 } else {
-                    // Database is empty - seed defaults ONCE
-                    console.log('[Sync] No members found - seeding defaults');
-                    const defaultMembers: Member[] = [
-                        { id: genId(), name: 'Sandy', planned: 3000, given: 2000, trip_id: currentTripId },
-                        { id: genId(), name: 'Vicky', planned: 3000, given: 2000, trip_id: currentTripId },
-                        { id: genId(), name: 'Abi', planned: 3000, given: 2000, trip_id: currentTripId },
-                        { id: genId(), name: 'Lachu', planned: 3000, given: 2000, trip_id: currentTripId },
-                        { id: genId(), name: 'Yuva', planned: 3000, given: 2000, trip_id: currentTripId },
-                        { id: genId(), name: 'Kalai', planned: 3000, given: 2000, trip_id: currentTripId },
-                        { id: genId(), name: 'Karthi', planned: 3000, given: 2000, trip_id: currentTripId },
-                    ];
-
-                    set({ members: defaultMembers });
-
-                    // Insert all defaults to DB
-                    await Promise.all(
-                        defaultMembers.map(mem =>
-                            supabase.from('members').insert(memberToDb(mem))
-                        )
-                    );
+                    set({ isLoading: false });
                 }
 
-                // Step 6: Sync Categories (DB-first, only seed if DB is empty)
-                if (dbCategories && dbCategories.length > 0) {
-                    set({ categories: dbCategories.map(dbToCategory) });
-                    console.log('[Sync] Loaded', dbCategories.length, 'categories from DB');
-                } else {
-                    console.log('[Sync] No categories found - seeding defaults');
-                    const defaultCategories: ExpenseCategory[] = [
-                        { id: genId(), name: 'Transportation (Internal)', planned: 0, actual: 0, color: '#3B82F6', icon: 'car', trip_id: currentTripId },
-                        { id: genId(), name: 'Travel - Train/Bus', planned: 1980, actual: 0, color: '#8B5CF6', icon: 'plane', trip_id: currentTripId },
-                        { id: genId(), name: 'Activities Fun World', planned: 4497, actual: 4497, color: '#10B981', icon: 'ticket', trip_id: currentTripId },
-                        { id: genId(), name: 'Turf', planned: 1000, actual: 0, color: '#F59E0B', icon: 'trophy', trip_id: currentTripId },
-                        { id: genId(), name: 'Food Friday Night', planned: 400, actual: 0, color: '#EF4444', icon: 'utensils', trip_id: currentTripId },
-                        { id: genId(), name: 'Food Saturday', planned: 2100, actual: 0, color: '#EF4444', icon: 'utensils', trip_id: currentTripId },
-                        { id: genId(), name: 'Food Sunday', planned: 2100, actual: 0, color: '#EF4444', icon: 'utensils', trip_id: currentTripId },
-                        { id: genId(), name: 'Food Monday', planned: 2100, actual: 0, color: '#EF4444', icon: 'utensils', trip_id: currentTripId },
-                        { id: genId(), name: 'Tickets/Entry', planned: 0, actual: 0, color: '#06B6D4', icon: 'ticket', trip_id: currentTripId },
-                        { id: genId(), name: 'Drinks/Beverages', planned: 0, actual: 0, color: '#EC4899', icon: 'coffee', trip_id: currentTripId },
-                        { id: genId(), name: 'Emergency/Medical', planned: 500, actual: 0, color: '#DC2626', icon: 'alert', trip_id: currentTripId },
-                        { id: genId(), name: 'Entertainment', planned: 0, actual: 0, color: '#A855F7', icon: 'music', trip_id: currentTripId },
-                        { id: genId(), name: 'Tips/Service', planned: 0, actual: 0, color: '#84CC16', icon: 'heart', trip_id: currentTripId },
-                        { id: genId(), name: 'Souvenirs/Gifts', planned: 0, actual: 0, color: '#F97316', icon: 'gift', trip_id: currentTripId },
-                    ];
-
-                    set({ categories: defaultCategories });
-
-                    await Promise.all(
-                        defaultCategories.map(cat =>
-                            supabase.from('categories').insert(categoryToDb(cat))
-                        )
-                    );
-                }
-
-                // Step 7: Sync Expenses (DB-first)
-                if (dbExpenses && dbExpenses.length > 0) {
-                    set({ expenses: dbExpenses.map(dbToExpense) });
-                    console.log('[Sync] Loaded', dbExpenses.length, 'expenses from DB');
-                } else {
-                    set({ expenses: [] });
-                }
-
-                // Step 8: Subscribe to real-time updates
-                supabase
+                // Step 8: Subscribe to real-time updates (Global subscription for simplicity, but filtering by tripId would be better if dynamic)
+                // For now, let's keep it simple and just listen to tables. 
+                // Note: Better to subscribe in setCurrentTrip to filter by ID, but global is okay for small scale.
+                // We'll stick to store-level subscription being global for now but checking trip_id in handler
+                const setupSubscription = () => {
+                    supabase
                     .channel('public:data')
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'members' }, payload => {
+                        const currentTripId = get().tripId;
+                        if (!currentTripId) return;
+                        
+                        // Only process if it belongs to current trip
+                        const record = (payload.new || payload.old) as any;
+                        if (record.trip_id !== currentTripId) return;
+
                         if (payload.eventType === 'INSERT') {
-                            // Only add if not already in local state (prevents duplicate from optimistic update)
                             set(s => {
                                 const exists = s.members.some(m => m.id === payload.new.id);
                                 return exists ? s : { members: [...s.members, dbToMember(payload.new)] };
@@ -335,6 +307,11 @@ export const useTripStore = create<TripStore>()(
                         if (payload.eventType === 'DELETE') set(s => ({ members: s.members.filter(m => m.id !== payload.old.id) }));
                     })
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, payload => {
+                        const currentTripId = get().tripId;
+                        if (!currentTripId) return;
+                        const record = (payload.new || payload.old) as any;
+                        if (record.trip_id !== currentTripId) return;
+
                         if (payload.eventType === 'INSERT') {
                             set(s => {
                                 const exists = s.categories.some(c => c.id === payload.new.id);
@@ -345,6 +322,11 @@ export const useTripStore = create<TripStore>()(
                         if (payload.eventType === 'DELETE') set(s => ({ categories: s.categories.filter(c => c.id !== payload.old.id) }));
                     })
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, payload => {
+                         const currentTripId = get().tripId;
+                        if (!currentTripId) return;
+                        const record = (payload.new || payload.old) as any;
+                        if (record.trip_id !== currentTripId) return;
+
                         if (payload.eventType === 'INSERT') {
                             set(s => {
                                 const exists = s.expenses.some(e => e.id === payload.new.id);
@@ -354,14 +336,116 @@ export const useTripStore = create<TripStore>()(
                         if (payload.eventType === 'UPDATE') set(s => ({ expenses: s.expenses.map(e => e.id === payload.new.id ? dbToExpense(payload.new) : e) }));
                         if (payload.eventType === 'DELETE') set(s => ({ expenses: s.expenses.filter(e => e.id !== payload.old.id) }));
                     })
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'trips' }, async () => {
+                         // Reload trips if any trip changes
+                         await get().fetchTrips();
+                    })
                     .subscribe();
-
+                };
+                
+                setupSubscription();
                 console.log('[Sync] Real-time subscription active');
             },
 
+            fetchTrips: async () => {
+                const { data, error } = await supabase.from('trips').select('*').order('created_at', { ascending: false });
+                if (error) {
+                    console.error('[DB] fetchTrips failed:', error);
+                    return;
+                }
+                set({ trips: data.map(dbToTrip) });
+            },
+
+            setCurrentTrip: async (tripId: string) => {
+                const trip = get().trips.find(t => t.id === tripId);
+                if (!trip) {
+                    console.error('Trip not found:', tripId);
+                    return;
+                }
+
+                set({ 
+                    tripId: tripId, 
+                    tripName: trip.name, 
+                    tripStartDate: trip.startDate, 
+                    tripEndDate: trip.endDate,
+                    isLoading: true 
+                });
+
+                // Fetch data for this trip
+                const [membersRes, categoriesRes, expensesRes] = await Promise.all([
+                    supabase.from('members').select('*').eq('trip_id', tripId),
+                    supabase.from('categories').select('*').eq('trip_id', tripId),
+                    supabase.from('expenses').select('*').eq('trip_id', tripId).order('created_at', { ascending: false })
+                ]);
+
+                if (membersRes.data) set({ members: membersRes.data.map(dbToMember) });
+                if (categoriesRes.data) set({ categories: categoriesRes.data.map(dbToCategory) });
+                if (expensesRes.data) set({ expenses: expensesRes.data.map(dbToExpense) });
+                
+                set({ isLoading: false, isSynced: true });
+            },
+
+            createTrip: async (name, startDate, endDate) => {
+                const { data, error } = await supabase
+                    .from('trips')
+                    .insert({ name, start_date: startDate, end_date: endDate })
+                    .select()
+                    .single();
+                
+                if (error) {
+                    console.error('[DB] createTrip failed:', error);
+                    throw error;
+                }
+                
+                const newTrip = dbToTrip(data);
+                set(s => ({ trips: [newTrip, ...s.trips] }));
+                
+                // Add default categories for new trip to be helpful
+                const tripId = newTrip.id;
+                const defaultCategories: ExpenseCategory[] = [
+                    { id: genId(), name: 'Transportation', planned: 0, actual: 0, color: '#3B82F6', icon: 'car', trip_id: tripId },
+                    { id: genId(), name: 'Food', planned: 0, actual: 0, color: '#EF4444', icon: 'utensils', trip_id: tripId },
+                    { id: genId(), name: 'Accommodation', planned: 0, actual: 0, color: '#F59E0B', icon: 'trophy', trip_id: tripId }, // trophy icon as 'hotel' mapped in component
+                    { id: genId(), name: 'Activities', planned: 0, actual: 0, color: '#10B981', icon: 'ticket', trip_id: tripId },
+                ];
+                
+                await Promise.all(defaultCategories.map(cat => supabase.from('categories').insert(categoryToDb(cat))));
+                
+                // Switch to new trip
+                await get().setCurrentTrip(newTrip.id);
+            },
+
+            deleteTrip: async (tripId) => {
+                const { error } = await supabase.from('trips').delete().eq('id', tripId);
+                if (error) {
+                    console.error('[DB] deleteTrip failed:', error);
+                    return;
+                }
+                
+                set(s => ({ trips: s.trips.filter(t => t.id !== tripId) }));
+                
+                // If deleted current trip, switch to another one
+                if (get().tripId === tripId) {
+                    const remainingTrips = get().trips;
+                    if (remainingTrips.length > 0) {
+                        await get().setCurrentTrip(remainingTrips[0].id);
+                    } else {
+                         // Reset state if no trips left
+                         set({ 
+                             tripId: null, 
+                             tripName: '', 
+                             members: [], 
+                             categories: [], 
+                             expenses: [] 
+                         });
+                    }
+                }
+            },
+
             addMember: async (name) => {
+                if (!get().tripId) return;
                 if (!name || name.trim() === '') { console.error("Validation Error: Name cannot be empty"); return; }
-                const newMember: Member = { id: genId(), name, planned: 3000, given: 0, trip_id: get().tripId! };
+                const newMember: Member = { id: genId(), name, planned: 0, given: 0, trip_id: get().tripId! };
                 set(s => ({ members: [...s.members, newMember] }));
                 const { error } = await supabase.from('members').insert(memberToDb(newMember));
                 if (error) console.error('[DB] addMember failed:', error);
@@ -387,6 +471,7 @@ export const useTripStore = create<TripStore>()(
             },
 
             addCategory: async (name, planned, color, icon) => {
+                if (!get().tripId) return;
                 if (!name || name.trim() === '') { console.error("Validation Error: Category name cannot be empty"); return; }
                 if (planned < 0) { console.error("Validation Error: Planned amount cannot be negative"); return; }
 
@@ -415,6 +500,7 @@ export const useTripStore = create<TripStore>()(
             },
 
             addExpense: async (expense) => {
+                if (!get().tripId) return;
                 if (!expense.title || expense.title.trim() === '') { console.error("Validation Error: Title cannot be empty"); return; }
                 if (expense.amount < 0) { console.error("Validation Error: Amount cannot be negative"); return; }
                 if (!expense.categoryId) { console.error("Validation Error: Category must be selected"); return; }
@@ -483,11 +569,11 @@ export const useTripStore = create<TripStore>()(
                     await supabase.from('expenses').delete().eq('id', id);
                     const currentCat = get().categories.find(c => c.id === exp.categoryId);
                     if (currentCat) {
-                        await supabase.from('categories').update({ actual: currentCat.actual - exp.amount }).eq('id', exp.categoryId);
+                        await supabase.from('categories').update({ actual_amount: currentCat.actual }).eq('id', exp.categoryId);
                     }
                 } else {
                     await supabase.from('expenses').delete().eq('id', id);
-                    get().initSync();
+                    get().setCurrentTrip(get().tripId!); // reload to stay in sync
                 }
             },
             // Stub implementations for timeline (no table info provided/verified)
@@ -519,8 +605,8 @@ export const useTripStore = create<TripStore>()(
                 sortColumn: state.sortColumn,
                 sortDirection: state.sortDirection,
                 _hasHydrated: state._hasHydrated,
-                // Do NOT persist: members, categories, expenses, timeline
-                // These come from the database via initSync
+                tripId: state.tripId, // Persist current trip ID
+                // Do NOT persist: members, categories, expenses, timeline, trips (fetch trips fresh)
             }),
             onRehydrateStorage: () => (state) => {
                 state?.setHasHydrated(true);

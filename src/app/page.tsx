@@ -14,6 +14,7 @@ import {
   PolarAngleAxis, PolarRadiusAxis, Radar, AreaChart, Area, XAxis, YAxis,
   Tooltip, Legend, BarChart as RechartsBar, Bar
 } from "recharts";
+import { TripSelector } from "@/components/trip/TripSelector";
 import {
   Plane, Menu, X, Wallet, Calendar, Users, Settings,
   TrendingUp, TrendingDown, BarChart3, PieChart,
@@ -356,10 +357,9 @@ export default function TripDashboard() {
               </button>
             </div>
 
-            {/* Trip Info */}
-            <div className="mb-8 p-3 rounded-lg bg-black/60 border border-white/10 backdrop-blur-md shadow-lg">
-              <p className="text-xs text-gray-300 uppercase tracking-wide mb-1">Current Trip</p>
-              <h2 className="text-sm font-bold text-white truncate shadow-black drop-shadow-sm">{store.tripName}</h2>
+            {/* Trip Info - Selector */}
+            <div className="mb-8">
+              <TripSelector />
             </div>
 
             {/* Navigation */}
