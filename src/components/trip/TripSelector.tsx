@@ -32,7 +32,7 @@ export function TripSelector() {
                 <DropdownMenuTrigger asChild>
                     <Button
                         variant="ghost"
-                        className="w-full justify-between px-3 py-6 bg-black/80 hover:bg-black/90 backdrop-blur-md group border border-white/10 hover:border-white/20 transition-all rounded-xl shadow-lg"
+                        className="w-full justify-between px-3 py-6 bg-purple-900/80 hover:bg-purple-900/90 backdrop-blur-md group border border-white/10 hover:border-white/20 transition-all rounded-xl shadow-lg"
                     >
                         <div className="text-left overflow-hidden">
                             <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-0.5 group-hover:text-blue-400 transition-colors">Current Trip</p>
