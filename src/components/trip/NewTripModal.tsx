@@ -16,24 +16,29 @@ interface NewTripModalProps {
 export function NewTripModal({ isOpen, onClose }: NewTripModalProps) {
     const store = useTripStore();
     const [name, setName] = useState("");
-    const [startDate, setStartDate] = useState("");
-    const [endDate, setEndDate] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
     if (!isOpen) return null;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name || !startDate || !endDate) return;
+        if (!name) return;
 
         setIsLoading(true);
         try {
-            await store.createTrip(name, startDate, endDate);
+            // Default dates: Today and Tomorrow 
+            // (User can update them later in the dashboard)
+            const today = new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 3);
+
+            const startStr = today.toISOString().split('T')[0];
+            const endStr = tomorrow.toISOString().split('T')[0];
+
+            await store.createTrip(name, startStr, endStr);
             onClose();
             // Reset form
             setName("");
-            setStartDate("");
-            setEndDate("");
         } catch (error) {
             console.error("Failed to create trip:", error);
         } finally {
@@ -77,31 +82,7 @@ export function NewTripModal({ isOpen, onClose }: NewTripModalProps) {
                             />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="startDate">Start Date</Label>
-                                <div className="relative">
-                                    <Input
-                                        id="startDate"
-                                        type="date"
-                                        value={startDate}
-                                        onChange={(e) => setStartDate(e.target.value)}
-                                    />
-                                </div>
-                            </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="endDate">End Date</Label>
-                                <div className="relative">
-                                    <Input
-                                        id="endDate"
-                                        type="date"
-                                        value={endDate}
-                                        onChange={(e) => setEndDate(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                        </div>
 
                         <div className="pt-4 flex gap-3 justify-end">
                             <Button type="button" variant="ghost" onClick={onClose}>
@@ -109,7 +90,7 @@ export function NewTripModal({ isOpen, onClose }: NewTripModalProps) {
                             </Button>
                             <Button
                                 type="submit"
-                                disabled={!name || !startDate || !endDate || isLoading}
+                                disabled={!name || isLoading}
                                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg shadow-purple-500/20 transition-all hover:scale-[1.02]"
                             >
                                 {isLoading ? "Creating..." : "Create Trip"}

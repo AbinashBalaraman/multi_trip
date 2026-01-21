@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 
 type Tab = "dashboard" | "timeline" | "members" | "settings";
+type SortColumn = 'name' | 'planned' | 'actual' | 'diff';
 
 // Icon mapping
 const IconMap: Record<string, React.ElementType> = {
@@ -340,20 +341,23 @@ export default function TripDashboard() {
 
           <div className="relative z-10 flex flex-col h-full p-6">
             {/* Logo & Close Button */}
-            <div className="flex items-center justify-between mb-8">
+            <div className="relative flex items-center mb-8 pr-8">
               <div className="flex items-center gap-2">
                 <div className="w-12 h-12 rounded-xl overflow-hidden border-2 border-purple-500/50 relative group cursor-pointer hover:scale-105 transition-transform flex-shrink-0 shadow-[0_0_15px_rgba(168,85,247,0.5)]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src="/campa-logo-v2.jpg" alt="Logo" className="w-full h-full object-cover" />
                 </div>
-                <div className="bg-black/80 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 shadow-lg">
-                  <span className="text-2xl font-black bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 text-transparent bg-clip-text drop-shadow-sm whitespace-nowrap tracking-wider animate-pulse">
+                <div className="bg-black/80 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10 shadow-lg overflow-hidden">
+                  <span className="text-xl font-black bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 text-transparent bg-clip-text drop-shadow-sm whitespace-nowrap tracking-wider animate-pulse truncate block">
                     The Boys
                   </span>
                 </div>
               </div>
-              <button onClick={() => setIsSidebarOpen(false)} className="p-2 rounded-lg bg-black/50 hover:bg-black/70 transition-colors">
-                <X className="w-5 h-5 text-white" />
+              <button
+                onClick={() => setIsSidebarOpen(false)}
+                className="absolute -right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-black/50 hover:bg-black/70 transition-colors border border-white/10"
+              >
+                <X className="w-4 h-4 text-white" />
               </button>
             </div>
 
