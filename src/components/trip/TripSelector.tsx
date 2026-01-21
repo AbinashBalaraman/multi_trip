@@ -32,7 +32,7 @@ export function TripSelector() {
                 <DropdownMenuTrigger asChild>
                     <Button
                         variant="ghost"
-                        className="w-full justify-between px-3 py-6 hover:bg-white/10 group border border-transparent hover:border-white/10 transition-all rounded-xl"
+                        className="w-full justify-between px-3 py-6 bg-black/80 hover:bg-black/90 backdrop-blur-md group border border-white/10 hover:border-white/20 transition-all rounded-xl shadow-lg"
                     >
                         <div className="text-left overflow-hidden">
                             <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-0.5 group-hover:text-blue-400 transition-colors">Current Trip</p>
@@ -84,7 +84,7 @@ export function TripSelector() {
                     <DropdownMenuSeparator />
 
                     <DropdownMenuItem
-                        onSelect={(e) => { e.preventDefault(); setIsNewTripOpen(true); }}
+                        onSelect={() => setIsNewTripOpen(true)}
                         className="cursor-pointer text-blue-500 font-medium hover:text-blue-600 focus:text-blue-600 gap-2 py-3"
                     >
                         <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-500/10">
