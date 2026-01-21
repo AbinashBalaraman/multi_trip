@@ -324,17 +324,33 @@ export const useTripStore = create<TripStore>()(
                 supabase
                     .channel('public:data')
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'members' }, payload => {
-                        if (payload.eventType === 'INSERT') set(s => ({ members: [...s.members, dbToMember(payload.new)] }));
+                        if (payload.eventType === 'INSERT') {
+                            // Only add if not already in local state (prevents duplicate from optimistic update)
+                            set(s => {
+                                const exists = s.members.some(m => m.id === payload.new.id);
+                                return exists ? s : { members: [...s.members, dbToMember(payload.new)] };
+                            });
+                        }
                         if (payload.eventType === 'UPDATE') set(s => ({ members: s.members.map(m => m.id === payload.new.id ? dbToMember(payload.new) : m) }));
                         if (payload.eventType === 'DELETE') set(s => ({ members: s.members.filter(m => m.id !== payload.old.id) }));
                     })
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, payload => {
-                        if (payload.eventType === 'INSERT') set(s => ({ categories: [...s.categories, dbToCategory(payload.new)] }));
+                        if (payload.eventType === 'INSERT') {
+                            set(s => {
+                                const exists = s.categories.some(c => c.id === payload.new.id);
+                                return exists ? s : { categories: [...s.categories, dbToCategory(payload.new)] };
+                            });
+                        }
                         if (payload.eventType === 'UPDATE') set(s => ({ categories: s.categories.map(c => c.id === payload.new.id ? dbToCategory(payload.new) : c) }));
                         if (payload.eventType === 'DELETE') set(s => ({ categories: s.categories.filter(c => c.id !== payload.old.id) }));
                     })
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, payload => {
-                        if (payload.eventType === 'INSERT') set(s => ({ expenses: [dbToExpense(payload.new), ...s.expenses] }));
+                        if (payload.eventType === 'INSERT') {
+                            set(s => {
+                                const exists = s.expenses.some(e => e.id === payload.new.id);
+                                return exists ? s : { expenses: [dbToExpense(payload.new), ...s.expenses] };
+                            });
+                        }
                         if (payload.eventType === 'UPDATE') set(s => ({ expenses: s.expenses.map(e => e.id === payload.new.id ? dbToExpense(payload.new) : e) }));
                         if (payload.eventType === 'DELETE') set(s => ({ expenses: s.expenses.filter(e => e.id !== payload.old.id) }));
                     })
