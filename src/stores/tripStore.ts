@@ -654,21 +654,19 @@ export const useTripStore = create<TripStore>()(
                     }));
                 }
             },
-        },
-
             setHasHydrated: (state) => set({ _hasHydrated: state }),
         }),
-{
-    name: 'boys-trip-2026',
-        // CRITICAL: Only persist UI state, NOT data!
-        // Database is the source of truth for members, categories, expenses
-        partialize: (state) => ({
-            sortColumn: state.sortColumn,
-            sortDirection: state.sortDirection,
-            _hasHydrated: state._hasHydrated,
-            tripId: state.tripId, // Persist current trip ID
-            // Do NOT persist: members, categories, expenses, timeline, trips (fetch trips fresh)
-        }),
+        {
+            name: 'boys-trip-2026',
+            // CRITICAL: Only persist UI state, NOT data!
+            // Database is the source of truth for members, categories, expenses
+            partialize: (state) => ({
+                sortColumn: state.sortColumn,
+                sortDirection: state.sortDirection,
+                _hasHydrated: state._hasHydrated,
+                tripId: state.tripId, // Persist current trip ID
+                // Do NOT persist: members, categories, expenses, timeline, trips (fetch trips fresh)
+            }),
             onRehydrateStorage: () => (state) => {
                 state?.setHasHydrated(true);
             },
