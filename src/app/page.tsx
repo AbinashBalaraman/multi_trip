@@ -421,6 +421,32 @@ export default function TripDashboard() {
             {/* DASHBOARD */}
             {activeTab === "dashboard" && (
               <>
+                {/* Kalai's Mistakes Counter */}
+                <Card variant="glass" className="border-2 border-red-500/20 bg-gradient-to-r from-red-500/10 to-orange-500/5 hover:border-red-500/40 transition-colors">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-red-500/10 rounded-xl border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
+                        <AlertTriangle className="w-6 h-6 text-red-500 animate-pulse" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-xl bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent">Kalai's Mistakes</h3>
+                        <p className="text-xs text-muted-foreground font-medium">Official Chaos Tracker</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-6">
+                      <div className="text-right">
+                        <span className="text-4xl font-black text-foreground tabular-nums tracking-tight">{store.mistakesCount}</span>
+                      </div>
+                      <Button
+                        size="lg"
+                        onClick={() => store.incrementMistakes()}
+                        className="bg-gradient-to-r from-red-500 to-orange-600 hover:from-red-600 hover:to-orange-700 text-white shadow-lg shadow-red-500/20 border border-red-400/20"
+                      >
+                        <Plus className="w-5 h-5 mr-1" /> +1
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
                 {/* Trip Progress Bar */}
                 <Card variant="glass" className="border border-purple-500/30 bg-gradient-to-r from-purple-500/5 to-pink-500/5">
                   <CardContent className="p-4">

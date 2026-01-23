@@ -67,6 +67,7 @@ const dbToTrip = (row: any): Trip => ({
     name: row.name,
     startDate: row.start_date,
     endDate: row.end_date,
+    mistakesCount: row.mistakes_count ?? 0,
 });
 
 // Types
@@ -75,6 +76,7 @@ export interface Trip {
     name: string;
     startDate: string;
     endDate: string;
+    mistakesCount: number;
 }
 
 export interface Member {
@@ -128,6 +130,7 @@ export interface TripStore {
     currency: string;
     tripStartDate: string;
     tripEndDate: string;
+    mistakesCount: number;
 
     // Data
     trips: Trip[];
@@ -164,6 +167,7 @@ export interface TripStore {
     deleteEvent: (id: string) => Promise<void>;
 
     setTripDates: (startDate: string, endDate: string) => Promise<void>;
+    incrementMistakes: () => Promise<void>;
 
     // UI State (Persisted)
     sortColumn: 'name' | 'planned' | 'actual' | 'diff' | null;
@@ -192,6 +196,7 @@ export const useTripStore = create<TripStore>()(
             currency: 'INR',
             tripStartDate: '',
             tripEndDate: '',
+            mistakesCount: 0,
             trips: [], // List of all trips
             members: [],
             categories: [],
@@ -343,7 +348,23 @@ export const useTripStore = create<TripStore>()(
                         .subscribe();
                 };
 
+                // Add separate subscription for mistakes count updates on trips table
+                const setupTripsSubscription = () => {
+                    supabase
+                        .channel('public:trips')
+                        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips' }, payload => {
+                            const currentTripId = get().tripId;
+                            if (currentTripId && payload.new.id === currentTripId) {
+                                set({ mistakesCount: payload.new.mistakes_count ?? 0 });
+                            }
+                            // Also update the trips list
+                            set(s => ({ trips: s.trips.map(t => t.id === payload.new.id ? dbToTrip(payload.new) : t) }));
+                        })
+                        .subscribe();
+                };
+
                 setupSubscription();
+                setupTripsSubscription();
                 console.log('[Sync] Real-time subscription active');
             },
 
@@ -368,6 +389,7 @@ export const useTripStore = create<TripStore>()(
                     tripName: trip.name,
                     tripStartDate: trip.startDate,
                     tripEndDate: trip.endDate,
+                    mistakesCount: trip.mistakesCount,
                     isLoading: true
                 });
 
@@ -582,8 +604,31 @@ export const useTripStore = create<TripStore>()(
             deleteEvent: async (id) => { set(s => ({ timeline: s.timeline.filter(t => t.id !== id) })); },
 
             setTripDates: async (start, end) => {
-                set({ tripStartDate: start, tripEndDate: end });
                 if (get().tripId) await supabase.from('trips').update({ start_date: start, end_date: end }).eq('id', get().tripId);
+            },
+
+            incrementMistakes: async () => {
+                const tripId = get().tripId;
+                if (!tripId) return;
+
+                const newCount = get().mistakesCount + 1;
+
+                // Optimistic update
+                set(s => ({
+                    mistakesCount: newCount,
+                    trips: s.trips.map(t => t.id === tripId ? { ...t, mistakesCount: newCount } : t)
+                }));
+
+                const { error } = await supabase.from('trips').update({ mistakes_count: newCount }).eq('id', tripId);
+
+                if (error) {
+                    console.error('[DB] incrementMistakes failed:', error);
+                    // Revert on error
+                    set(s => ({
+                        mistakesCount: s.mistakesCount - 1,
+                        trips: s.trips.map(t => t.id === tripId ? { ...t, mistakesCount: s.mistakesCount - 1 } : t)
+                    }));
+                }
             },
 
             setHasHydrated: (state) => set({ _hasHydrated: state }),
