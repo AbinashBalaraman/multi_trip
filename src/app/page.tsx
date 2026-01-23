@@ -435,7 +435,53 @@ export default function TripDashboard() {
                     </div>
                     <div className="flex items-center gap-6">
                       <div className="text-right">
-                        <span className="text-4xl font-black text-foreground tabular-nums tracking-tight">{store.mistakesCount}</span>
+                        {editingCategory === 'mistakes-counter' ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              value={editValue}
+                              onChange={e => setEditValue(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  const val = parseInt(editValue);
+                                  if (!isNaN(val) && val >= 0) {
+                                    store.setMistakesCount(val);
+                                    setEditingCategory(null);
+                                  }
+                                } else if (e.key === 'Escape') {
+                                  setEditingCategory(null);
+                                }
+                              }}
+                              className="w-20 h-10 text-xl font-bold text-center bg-background/50 border-red-500/30 focus-visible:ring-red-500"
+                              autoFocus
+                            />
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-10 w-10 hover:bg-emerald-500/10 hover:text-emerald-500"
+                              onClick={() => {
+                                const val = parseInt(editValue);
+                                if (!isNaN(val) && val >= 0) {
+                                  store.setMistakesCount(val);
+                                  setEditingCategory(null);
+                                }
+                              }}
+                            >
+                              <Check className="w-5 h-5" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <span
+                            className="text-4xl font-black text-foreground tabular-nums tracking-tight cursor-pointer hover:text-red-500 transition-colors tooltip underline decoration-dashed decoration-transparent hover:decoration-red-500/30 underline-offset-4"
+                            title="Click to edit manually"
+                            onClick={() => {
+                              setEditValue(store.mistakesCount.toString());
+                              setEditingCategory('mistakes-counter');
+                            }}
+                          >
+                            {store.mistakesCount}
+                          </span>
+                        )}
                       </div>
                       <Button
                         size="lg"

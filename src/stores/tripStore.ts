@@ -168,6 +168,7 @@ export interface TripStore {
 
     setTripDates: (startDate: string, endDate: string) => Promise<void>;
     incrementMistakes: () => Promise<void>;
+    setMistakesCount: (count: number) => Promise<void>;
 
     // UI State (Persisted)
     sortColumn: 'name' | 'planned' | 'actual' | 'diff' | null;
@@ -631,19 +632,43 @@ export const useTripStore = create<TripStore>()(
                 }
             },
 
+            setMistakesCount: async (count: number) => {
+                const tripId = get().tripId;
+                if (!tripId) return;
+
+                // Optimistic update
+                const previousCount = get().mistakesCount;
+                set(s => ({
+                    mistakesCount: count,
+                    trips: s.trips.map(t => t.id === tripId ? { ...t, mistakesCount: count } : t)
+                }));
+
+                const { error } = await supabase.from('trips').update({ mistakes_count: count }).eq('id', tripId);
+
+                if (error) {
+                    console.error('[DB] setMistakesCount failed:', error);
+                    // Revert on error
+                    set(s => ({
+                        mistakesCount: previousCount,
+                        trips: s.trips.map(t => t.id === tripId ? { ...t, mistakesCount: previousCount } : t)
+                    }));
+                }
+            },
+        },
+
             setHasHydrated: (state) => set({ _hasHydrated: state }),
         }),
-        {
-            name: 'boys-trip-2026',
-            // CRITICAL: Only persist UI state, NOT data!
-            // Database is the source of truth for members, categories, expenses
-            partialize: (state) => ({
-                sortColumn: state.sortColumn,
-                sortDirection: state.sortDirection,
-                _hasHydrated: state._hasHydrated,
-                tripId: state.tripId, // Persist current trip ID
-                // Do NOT persist: members, categories, expenses, timeline, trips (fetch trips fresh)
-            }),
+{
+    name: 'boys-trip-2026',
+        // CRITICAL: Only persist UI state, NOT data!
+        // Database is the source of truth for members, categories, expenses
+        partialize: (state) => ({
+            sortColumn: state.sortColumn,
+            sortDirection: state.sortDirection,
+            _hasHydrated: state._hasHydrated,
+            tripId: state.tripId, // Persist current trip ID
+            // Do NOT persist: members, categories, expenses, timeline, trips (fetch trips fresh)
+        }),
             onRehydrateStorage: () => (state) => {
                 state?.setHasHydrated(true);
             },
