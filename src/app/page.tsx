@@ -486,9 +486,9 @@ export default function TripDashboard() {
                       <Button
                         size="sm"
                         onClick={() => store.incrementMistakes()}
-                        className="bg-gradient-to-r from-red-500 to-orange-600 hover:from-red-600 hover:to-orange-700 text-white shadow-lg shadow-red-500/20 border border-red-400/20"
+                        className="h-7 px-2 text-xs bg-gradient-to-r from-red-500 to-orange-600 hover:from-red-600 hover:to-orange-700 text-white shadow-lg shadow-red-500/20 border border-red-400/20"
                       >
-                        <Plus className="w-4 h-4 mr-2" /> 1
+                        <Plus className="w-3.5 h-3.5 mr-1" /> 1
                       </Button>
                     </div>
                   </CardContent>
