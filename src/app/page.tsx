@@ -472,7 +472,7 @@ export default function TripDashboard() {
                           </div>
                         ) : (
                           <span
-                            className="text-4xl font-black text-foreground tabular-nums tracking-tight cursor-pointer hover:text-red-500 transition-colors tooltip underline decoration-dashed decoration-transparent hover:decoration-red-500/30 underline-offset-4"
+                            className="text-6xl font-black text-foreground tabular-nums tracking-tight cursor-pointer hover:text-red-500 transition-colors tooltip underline decoration-dashed decoration-transparent hover:decoration-red-500/30 underline-offset-4"
                             title="Click to edit manually"
                             onClick={() => {
                               setEditValue(store.mistakesCount.toString());
